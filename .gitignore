@@ -1,4 +1,4 @@
-# Do not push data files
+# Ignore data files
 /data
 
 # Created by .ignore support plugin (hsz.mobi)
