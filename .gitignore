@@ -1,5 +1,8 @@
 # Ignore data files
-/data
+#/data
+*.csv
+*.xls
+*.xlsx
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template
