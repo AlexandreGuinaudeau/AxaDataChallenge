@@ -4,9 +4,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from configuration import CONFIG
+from utils import load_train_df
 
 
-TRAIN_PATH = os.path.join(__file__, '..', 'train.csv')
+TRAIN_PATH = os.path.join(CONFIG.preprocessed_data_path, "train.csv")
 
 
 def parse(df, remove_day_off=True):
@@ -47,15 +48,6 @@ def parse(df, remove_day_off=True):
     return df
 
 
-def load_df(chunksize=None):
-    dtype = {'ASS_ASSIGNMENT': str, 'YEAR': int, 'MONTH': int, 'DAY': int, 'WEEK_NUMBER': int, 'WEEKDAY': int,
-             'DAY_OFF': int, 'TIME': float, 'CSPL_RECEIVED_CALLS': float}
-    if chunksize is not None:
-        for chunk in pd.read_csv(TRAIN_PATH, encoding='latin-1', index_col=0, chunksize=chunksize, dtype=dtype):
-            return chunk
-    return pd.read_csv(TRAIN_PATH, encoding='latin-1', index_col=0, dtype=dtype)
-
-
 def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
     """
     Plot the number of calls to compare them.
@@ -73,7 +65,7 @@ def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
     Week comparison: For each day of the week, take the average number of calls, then compare for each week of the year.
     """
     assert scale in ['DAY', 'WEEK', 'YEAR']
-    df = load_df()
+    df = load_train_df(TRAIN_PATH)
     if assignments is not None:
         if isinstance(assignments, str):
             assignments = [assignments]

@@ -5,10 +5,12 @@ class _Config:
     def __init__(self):
         self.root_path = os.path.realpath(os.path.join(__file__, ".."))
 
-        self.data_path = os.path.realpath(os.path.join(self.root_path, "data"))
-        self.train_path = os.path.join(self.data_path, "train_2011_2012.csv")
-        self.meteo_path1 = os.path.join(self.data_path, "meteo_2011.csv")
-        self.meteo_path2 = os.path.join(self.data_path, "meteo_2012.csv")
+        self.raw_data_path = os.path.realpath(os.path.join(self.root_path, "raw_data"))
+        self.train_path = os.path.join(self.raw_data_path, "train_2011_2012.csv")
+        self.meteo_path1 = os.path.join(self.raw_data_path, "meteo_2011.csv")
+        self.meteo_path2 = os.path.join(self.raw_data_path, "meteo_2012.csv")
+
+        self.preprocessed_data_path = os.path.join(self.root_path, "data")
 
         self.results_path = os.path.join(self.root_path, "results")
         self.submission_path = os.path.join(self.results_path, "empty_submission.txt")

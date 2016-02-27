@@ -1,5 +1,5 @@
 # Ignore data files
-#/data
+#/raw_data
 *.csv
 *.xls
 *.xlsx

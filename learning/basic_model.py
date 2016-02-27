@@ -3,7 +3,7 @@ Here, we simply predict using the mean of the values in the previous days, weeks
 """
 from datetime import date
 from configuration import CONFIG
-from visualization.trends import parse, load_df
+from visualization.trends import parse
 
 
 def last_year(d):
@@ -19,19 +19,20 @@ def last_year(d):
         return d + (date(d.year - 1, 1, 1) - date(d.year, 1, 1))
 
 
-def predict(df):
+def predict(test_df, train_df):
     # df['DATE'] = df['DATE'].apply(last_year)
-    df['DAY_OFF'] = 0
-    df['CSPL_RECEIVED_CALLS'] = 0
-    parsed_df = parse(df.copy())
-    parsed_df = parsed_df[parsed_df["ASS_ASSIGNMENT"].isin(CONFIG.relevant_assignments)]
-    train_df = load_df()
+    if 'DATE' in test_df.columns:
+        # Not parsed yet
+        test_df['DAY_OFF'] = 0
+        test_df['CSPL_RECEIVED_CALLS'] = 0
+        test_df = parse(test_df)
+    test_df = test_df[test_df["ASS_ASSIGNMENT"].isin(CONFIG.relevant_assignments)]
     train_df.drop("WEEK_NUMBER", axis=1, inplace=True)
     train_df = train_df.groupby(["ASS_ASSIGNMENT", "WEEKDAY", "TIME"])["CSPL_RECEIVED_CALLS"].mean().reset_index()
     train_df.set_index(['ASS_ASSIGNMENT', 'WEEKDAY', 'TIME'], inplace=True)
     prediction = None
-    for week_number in sorted(set(parsed_df['WEEK_NUMBER'])):
-        joined_df = parsed_df[parsed_df['WEEK_NUMBER'] == week_number]
+    for week_number in sorted(set(test_df['WEEK_NUMBER'])):
+        joined_df = test_df[test_df['WEEK_NUMBER'] == week_number]
         joined_df = joined_df[['ASS_ASSIGNMENT', 'WEEKDAY', 'TIME', 'CSPL_RECEIVED_CALLS']]
         joined_df.set_index(['ASS_ASSIGNMENT', 'WEEKDAY', 'TIME'], inplace=True)
         joined_df = joined_df.join(train_df, how='left', lsuffix="_empty")
