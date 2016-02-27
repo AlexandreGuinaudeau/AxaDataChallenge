@@ -4,25 +4,56 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from configuration import CONFIG
-import time
 
 
-def parse(columns):
+TRAIN_PATH = os.path.join(__file__, '..', 'train.csv')
+
+
+def parse(df, remove_day_off=True):
+    """
+    Updates the dataframe by replacing the date by (year, month, day, day of the week, week of the year, time of the day
+
+    Parameters
+    ==========
+    df: The input dataframe
+    remove_day_off: Whether days off should be removed
+    """
     # date_format='%Y-%m-%d %H:%M:%S.%f'
-    # for df in pd.read_csv(CONFIG.train_file, sep=";", usecols=columns, parse_dates=[0], chunksize=10000):
-    df = pd.read_csv(CONFIG.train_file, sep=";", usecols=columns, parse_dates=[0])
+    if remove_day_off:
+        df = df[df["DAY_OFF"] == 0]
+        df.drop('DAY_OFF', axis=1, inplace=True)
     df['TIME'] = df['DATE'].apply(lambda d: d.hour + float(d.minute)/60)
+    print("Added TIME")
+    df['YEAR'] = df['DATE'].apply(lambda d: d.year)
+    print("Added YEAR")
+    df['MONTH'] = df['DATE'].apply(lambda d: d.month)
+    print("Added MONTH")
+    df['DAY'] = df['DATE'].apply(lambda d: d.day)
+    print("Added DAY")
     df['WEEK_NUMBER'] = df['DATE'].apply(lambda d: d.isocalendar()[1])
+    print("Added WEEK_NUMBER")
     df['WEEKDAY'] = df['DATE'].apply(lambda d: d.isocalendar()[2])
+    print("Added WEEKDAY")
     df.drop('DATE', axis=1, inplace=True)
+    if remove_day_off:
+        grouped = df.groupby(["ASS_ASSIGNMENT", "YEAR", "MONTH", "DAY", "WEEK_NUMBER", "WEEKDAY", "TIME"])
+    else:
+        grouped = df.groupby(["ASS_ASSIGNMENT", "YEAR", "MONTH", "DAY", "WEEK_NUMBER", "WEEKDAY", "DAY_OFF", "TIME"])
+    print("Grouped")
+    df = grouped["CSPL_RECEIVED_CALLS"].sum().reset_index()
+    print("Summed")
+    df[["CSPL_RECEIVED_CALLS"]] = df[["CSPL_RECEIVED_CALLS"]].astype(float)
+    df = df[df["ASS_ASSIGNMENT"].isin(CONFIG.relevant_assignments)]
     return df
 
 
 def load_df(chunksize=None):
+    dtype = {'ASS_ASSIGNMENT': str, 'YEAR': int, 'MONTH': int, 'DAY': int, 'WEEK_NUMBER': int, 'WEEKDAY': int,
+             'DAY_OFF': int, 'TIME': float, 'CSPL_RECEIVED_CALLS': float}
     if chunksize is not None:
-        for chunk in pd.read_csv(train_path, encoding='latin-1', index_col=0, chunksize=chunksize):
+        for chunk in pd.read_csv(TRAIN_PATH, encoding='latin-1', index_col=0, chunksize=chunksize, dtype=dtype):
             return chunk
-    return pd.read_csv(train_path, encoding='latin-1', index_col=0)
+    return pd.read_csv(TRAIN_PATH, encoding='latin-1', index_col=0, dtype=dtype)
 
 
 def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
@@ -46,17 +77,13 @@ def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
     if assignments is not None:
         if isinstance(assignments, str):
             assignments = [assignments]
-        df = df[df["ASS_ASSIGNMENT"].isin(assignments)]
     else:
-        assignments = set(df['ASS_ASSIGNMENT'])
-    assignments = sorted(assignments)
+        assignments = CONFIG.relevant_assignments
+    df = df[df["ASS_ASSIGNMENT"].isin(assignments)]
     if remove_days_off:
         df = df[df["DAY_OFF"] == 0]
     df.drop("DAY_OFF", axis=1, inplace=True)
 
-    grouped = df.groupby(["ASS_ASSIGNMENT", "WEEK_NUMBER", "WEEKDAY", "TIME"])
-    df = grouped["CSPL_RECEIVED_CALLS"].sum().reset_index()
-    df[["CSPL_RECEIVED_CALLS"]] = df[["CSPL_RECEIVED_CALLS"]].astype(float)
     if scale == 'DAY':
         for assignment in assignments:
             print(assignment)
@@ -92,8 +119,13 @@ def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
 
 
 if __name__ == "__main__":
+    # import time
     # start = time.time()
-    # df = parse(["DATE", "DAY_OFF", "ASS_ASSIGNMENT", "CSPL_RECEIVED_CALLS"])
-    train_path = os.path.join(os.getcwd(), 'train.csv')
+    # df = pd.read_csv(CONFIG.train_path, sep=";", usecols=["DATE", "DAY_OFF", "ASS_ASSIGNMENT", "CSPL_RECEIVED_CALLS"],
+    #                  parse_dates=[0])
+    # print("CSV file read in %i s" % (time.time() - start))
+    # df = parse(df)
+    # df.to_csv(TRAIN_PATH)
+    # print("Dataframe parsed in %i s" % (time.time() - start))
     visualization_path = os.path.join(os.getcwd(), 'visualization')
-    compare_calls("WEEK", visualization_path, assignments="Téléphonie")
+    compare_calls("WEEK", visualization_path, assignments='Téléphonie')
