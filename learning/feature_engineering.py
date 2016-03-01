@@ -57,6 +57,14 @@ class FeatureFactory:
         self.X = self.X.loc[:, features]
         return self.X
 
+    def apply_weights(self, weights):
+        if weights is None:
+            return
+        if len(weights) != len(self.X.columns):
+            raise AssertionError("The weights must be of the same size as the columns")
+        for i, c in enumerate(self.X.columns):
+            self.X[c].apply(lambda x: x*weights[i])
+
     @column_method('DATE')
     def year(self, x):
         return x.year
