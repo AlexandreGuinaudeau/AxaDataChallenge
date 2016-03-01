@@ -1,72 +1,104 @@
 import os
 import pandas as pd
+import numpy as np
 from datetime import date, timedelta as td
+import time
+from sklearn import cross_validation
 
 from configuration import CONFIG
 from utils import load_submission, load_train_df
+from learning.date_shuffle_split import DateShuffleSplit, train_test_split
+from learning.feature_engineering import FeatureFactory
 
 
-def create_submission_file(prediction_function, train_df, in_path=None, out_path=None):
+def create_submission_file(estimator, cols, train_path=None, in_path=None, out_path=None):
     # Set defaults
     if out_path is None:
-        out_path = os.path.join(in_path, "..", "submission.txt")
-    df = load_submission(in_path)
-    df['prediction'] = prediction_function(df.copy(), train_df)
-    df.to_csv(out_path, sep='\t', index=None, encoding='utf-8', date_format='%Y-%m-%d %H:%M:%S.000')
-    return df
+        out_path = os.path.join(CONFIG.results_path, "submission.txt")
+    if train_path is None:
+        train_path = CONFIG.preprocessed_train_path
+
+    train_df = load_train_df(train_path, 50000)
+    print("Number of training days:", len(set(train_df['DATE']))/48)
+    submission_df = load_submission(in_path)
+    for assignment in CONFIG.submission_assignments:
+        t_df = train_df[train_df['ASS_ASSIGNMENT'] == assignment]
+        sub_df = submission_df[submission_df['ASS_ASSIGNMENT'] == assignment]
+        X, y, _, _ = get_cross_validation_parameters(t_df, cols)
+        X_submission, _, _, _ = get_cross_validation_parameters(sub_df, cols, label='prediction')
+        start = time.time()
+        estimator.fit(X, y)
+        print("Estimator fit in %i seconds." % (time.time() - start))
+    submission_df['prediction'] = [int(i+0.5) for i in estimator.predict(X_submission)]
+    submission_df.to_csv(out_path, sep='\t', index=None, encoding='utf-8', date_format='%Y-%m-%d %H:%M:%S.000')
+    return submission_df
 
 
-def split_train_test(dates, remove_previous_days=None):
+def get_cross_validation_parameters(df, columns, k_fold=5, out_path=None, label=None):
     """
-    Creates train and test data sets, where the test set has only dates in `dates`.
+    Get the parameters you need for sklearn cross-validation functions.
 
     Parameters
     ==========
-    dates: list of dates to be used in the testing files
-    remove_previous_days: bool, whether the 2 days before a test date should be removed
+    df: pd.Dataframe, the input data.
+    columns: list, the features to be processed and/or kept.
+    k_fold: The number of partitions of size 1/k to choose for cross-validation.
+    out_path: str or None, path to a file in which X is saved, to avoid recomputing features.
+        None not to save this file.
+
+    Returns
+    =======
+    X: np.array, the data set.
+    y: np.array, the corresponding labels.
+    cv: An object to be used as a cross-validation generator.
+    dates: np.array, the list of dates corresponding to the data set.
     """
-    # Set defaults
-    if remove_previous_days is None:
-        remove_previous_days = True
-    dates_index = [(d.year, d.month, d.day) for d in dates]
-    df = load_train_df(os.path.join(CONFIG.preprocessed_data_path, "train.csv"))
-    df.set_index(['YEAR', 'MONTH', 'DAY'], inplace=True)
-    test_df = df[df.index.isin(dates_index)]
-    if remove_previous_days:
-        dates_1 = [d - td(days=1) for d in dates]
-        dates_2 = [d - td(days=2) for d in dates]
-        dates.extend(dates_1)
-        dates.extend(dates_2)
-    dates_index = [(d.year, d.month, d.day) for d in dates]
-    train_df = df[~df.index.isin(dates_index)]
-    return train_df, test_df
-
-
-def mean_square_error(expected_l, predicted_l):
-    assert (len(expected_l) == len(predicted_l))
-    diff = [(expected_l[i] - predicted_l[i])**2 for i in range(len(expected_l))]
-    return sum(diff)/len(expected_l)
-
-
-def evaluate_model(prediction_function, dates, remove_previous_days=None):
-    train_df, test_df = split_train_test(dates, remove_previous_days=remove_previous_days)
-    prediction = prediction_function(test_df.copy(), train_df)
-    return mean_square_error(list(test_df['CSPL_RECEIVED_CALLS']), prediction)
+    if label is None:
+        label = 'CSPL_RECEIVED_CALLS'
+    ff = FeatureFactory(df)
+    dates = np.array(ff('full_date'))
+    y = np.array(df[label])
+    for column in columns:
+        print(column)
+        ff(column)
+    ff.select_features(columns)
+    df = ff.X
+    if out_path is not None:
+        df.to_csv(out_path)
+    X = np.array(df)
+    cv = DateShuffleSplit(dates, n_iter=k_fold, test_size=float(1)/k_fold)
+    return X, y, cv, dates
 
 
 if __name__ == "__main__":
-    from learning.basic_model import predict
-    # create_submission_file(predict)
-    test_dates = [date(2012, 1, 17),
-                  date(2012, 2, 1),
-                  date(2012, 3, 5),
-                  date(2012, 4, 2),
-                  date(2012, 5, 26),
-                  date(2012, 6, 25),
-                  date(2012, 7, 8),
-                  date(2012, 8, 7),
-                  date(2012, 9, 6),
-                  date(2012, 10, 10),
-                  date(2012, 11, 19),
-                  date(2012, 12, 14)]
-    print(evaluate_model(predict, test_dates))
+    from sklearn.linear_model import LogisticRegression
+
+    df = load_train_df(CONFIG.preprocessed_train_path, chunksize=500000)
+    submission_df = load_submission()
+    estimator = LogisticRegression()
+    k_fold = 5
+    n_jobs = 3
+    verbose = 0
+    fit_params = None
+    cols = ["WEEK_DAY", "TIME"]
+    df = df[df['ASS_ASSIGNMENT'] == 'Téléphonie']
+    X, y, cv, dates = get_cross_validation_parameters(df, cols, k_fold=k_fold)
+    df = create_submission_file(estimator, cols)
+    # print(max(df['prediction']))
+    # ######################## Examples ######################## #
+    # X_train, X_test, y_train, y_test = train_test_split(dates, X, y)
+    # print(X_train.shape)
+    # print(X_test.shape)
+    # print(y_train.shape)
+    # print(y_test.shape)
+    # predict = cross_validation.cross_val_predict(estimator, X, y, cv=cv, n_jobs=n_jobs, verbose=verbose,
+    #                                              fit_params=fit_params)
+    # print(predict)
+    score = cross_validation.cross_val_score(estimator, X, y, cv=cv, n_jobs=n_jobs, verbose=verbose,
+                                             fit_params=fit_params)
+    print(score)
+    # score, perm_score, value = cross_validation.permutation_test_score(estimator, X, y, cv=cv, n_permutations=k_fold,
+    #                                                                    n_jobs=n_jobs, verbose=verbose)
+    # print(score)
+    # print(perm_score)
+    # print(value)

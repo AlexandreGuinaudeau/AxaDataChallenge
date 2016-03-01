@@ -20,31 +20,28 @@ def parse(df, remove_day_off=True):
     remove_day_off: Whether days off should be removed
     """
     # date_format='%Y-%m-%d %H:%M:%S.%f'
+    df = df[df["ASS_ASSIGNMENT"].isin(CONFIG.submission_assignments)]
     if remove_day_off:
         df = df[df["DAY_OFF"] == 0]
         df.drop('DAY_OFF', axis=1, inplace=True)
-    df['TIME'] = df['DATE'].apply(lambda d: d.hour + float(d.minute)/60)
-    print("Added TIME")
-    df['YEAR'] = df['DATE'].apply(lambda d: d.year)
-    print("Added YEAR")
-    df['MONTH'] = df['DATE'].apply(lambda d: d.month)
-    print("Added MONTH")
-    df['DAY'] = df['DATE'].apply(lambda d: d.day)
-    print("Added DAY")
-    df['WEEK_NUMBER'] = df['DATE'].apply(lambda d: d.isocalendar()[1])
-    print("Added WEEK_NUMBER")
-    df['WEEKDAY'] = df['DATE'].apply(lambda d: d.isocalendar()[2])
-    print("Added WEEKDAY")
-    df.drop('DATE', axis=1, inplace=True)
-    if remove_day_off:
-        grouped = df.groupby(["ASS_ASSIGNMENT", "YEAR", "MONTH", "DAY", "WEEK_NUMBER", "WEEKDAY", "TIME"])
-    else:
-        grouped = df.groupby(["ASS_ASSIGNMENT", "YEAR", "MONTH", "DAY", "WEEK_NUMBER", "WEEKDAY", "DAY_OFF", "TIME"])
+    # df['TIME'] = df['DATE'].apply(lambda d: d.hour + float(d.minute)/60)
+    # print("Added TIME")
+    # df['YEAR'] = df['DATE'].apply(lambda d: d.year)
+    # print("Added YEAR")
+    # df['MONTH'] = df['DATE'].apply(lambda d: d.month)
+    # print("Added MONTH")
+    # df['DAY'] = df['DATE'].apply(lambda d: d.day)
+    # print("Added DAY")
+    # df['WEEK_NUMBER'] = df['DATE'].apply(lambda d: d.isocalendar()[1])
+    # print("Added WEEK_NUMBER")
+    # df['WEEKDAY'] = df['DATE'].apply(lambda d: d.isocalendar()[2])
+    # print("Added WEEKDAY")
+    # df.drop('DATE', axis=1, inplace=True)
+    grouped = df.groupby(["ASS_ASSIGNMENT", "DATE", "DAY_OFF"])
     print("Grouped")
     df = grouped["CSPL_RECEIVED_CALLS"].sum().reset_index()
     print("Summed")
     df[["CSPL_RECEIVED_CALLS"]] = df[["CSPL_RECEIVED_CALLS"]].astype(float)
-    df = df[df["ASS_ASSIGNMENT"].isin(CONFIG.relevant_assignments)]
     return df
 
 
@@ -70,7 +67,7 @@ def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
         if isinstance(assignments, str):
             assignments = [assignments]
     else:
-        assignments = CONFIG.relevant_assignments
+        assignments = CONFIG.submission_assignments
     df = df[df["ASS_ASSIGNMENT"].isin(assignments)]
     if remove_days_off:
         df = df[df["DAY_OFF"] == 0]
@@ -111,13 +108,13 @@ def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
 
 
 if __name__ == "__main__":
-    # import time
-    # start = time.time()
-    # df = pd.read_csv(CONFIG.train_path, sep=";", usecols=["DATE", "DAY_OFF", "ASS_ASSIGNMENT", "CSPL_RECEIVED_CALLS"],
-    #                  parse_dates=[0])
-    # print("CSV file read in %i s" % (time.time() - start))
-    # df = parse(df)
-    # df.to_csv(TRAIN_PATH)
-    # print("Dataframe parsed in %i s" % (time.time() - start))
-    visualization_path = os.path.join(os.getcwd(), 'visualization')
-    compare_calls("WEEK", visualization_path, assignments='Téléphonie')
+    import time
+    start = time.time()
+    df = pd.read_csv(CONFIG.raw_train_path, sep=";", usecols=["DATE", "DAY_OFF", "ASS_ASSIGNMENT", "CSPL_RECEIVED_CALLS"],
+                     parse_dates=[0])
+    print("CSV file read in %i s" % (time.time() - start))
+    df = parse(df)
+    df.to_csv(CONFIG.preprocessed_train_path)
+    print("Dataframe parsed in %i s" % (time.time() - start))
+    # visualization_path = os.path.join(os.getcwd(), 'visualization')
+    # compare_calls("WEEK", visualization_path, assignments='Téléphonie')
