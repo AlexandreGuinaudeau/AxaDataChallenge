@@ -8,28 +8,6 @@ from utils import load_train_df
 from learning.feature_engineering import FeatureFactory
 
 
-def parse(df, remove_day_off=True):
-    """
-    Updates the dataframe by replacing the date by (year, month, day, day of the week, week of the year, time of the day
-
-    Parameters
-    ==========
-    df: The input dataframe
-    remove_day_off: Whether days off should be removed
-    """
-    # date_format='%Y-%m-%d %H:%M:%S.%f'
-    df = df[df["ASS_ASSIGNMENT"].isin(CONFIG.submission_assignments)]
-    if remove_day_off:
-        df = df[df["DAY_OFF"] == 0]
-        df.drop('DAY_OFF', axis=1, inplace=True)
-    grouped = df.groupby(["ASS_ASSIGNMENT", "DATE", "DAY_OFF"])
-    print("Grouped")
-    df = grouped["CSPL_RECEIVED_CALLS"].sum().reset_index()
-    print("Summed")
-    df[["CSPL_RECEIVED_CALLS"]] = df[["CSPL_RECEIVED_CALLS"]].astype(float)
-    return df
-
-
 def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
     """
     Plot the number of calls to compare them.
@@ -65,6 +43,8 @@ def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
     df = ff.X
 
     if scale == 'DAY':
+        grouped = df.groupby(["ASS_ASSIGNMENT", "WEEK_NUMBER", "WEEK_DAY", "TIME"])
+        df = grouped["CSPL_RECEIVED_CALLS"].sum().reset_index()
         for assignment in assignments:
             print(assignment)
             df_assignment = df[df['ASS_ASSIGNMENT'] == assignment]
@@ -108,4 +88,4 @@ if __name__ == "__main__":
     # df.to_csv(CONFIG.preprocessed_train_path)
     # print("Dataframe parsed in %i s" % (time.time() - start))
     visualization_path = os.path.join(os.getcwd(), 'visualization')
-    compare_calls("WEEK", visualization_path, assignments='Tech. Axa')
+    compare_calls("DAY", visualization_path, assignments='CAT')

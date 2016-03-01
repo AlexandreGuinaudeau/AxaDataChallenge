@@ -7,7 +7,7 @@ import pandas as pd
 from configuration import CONFIG
 
 
-def parse_as_df(in_path, out_path, useful_cols=None, remove_days_off=True):
+def parse_train_as_df(in_path, out_path, useful_cols=None, remove_days_off=True):
     """
     Removes from the file useless lines and columns.
     Computation time: 35s.
@@ -31,7 +31,30 @@ def parse_as_df(in_path, out_path, useful_cols=None, remove_days_off=True):
     df.to_csv(out_path)
 
 
-def parse_as_dict(in_path, out_path):
+def parse_meteo_as_df(in_path, out_path=None, useful_cols=None):
+    """
+    Parsing meteo file
+    """
+    # date_format='%Y-%m-%d %H:%M:%S.%f'
+    if useful_cols is None:
+        useful_cols = ['DATE', 'MIN_TEMP', 'PRECIP']  # date, temperature_min, precipitations
+    header_row = ['DATE', 'DEPT', 'CITY', 'MIN_TEMP', 'MAX_TEMP', 'WIND_DIR', 'PRECIP', 'HPA']
+    # because the meteo file index is missing  :(
+    df = pd.read_csv(in_path,
+                     sep=",",
+                     usecols=useful_cols,
+                     parse_dates=[0],
+                     names=header_row)
+    
+    grouped = df.groupby('DATE')  # group by date
+    df = grouped["MIN_TEMP", 'PRECIP'].mean().reset_index()
+    df[["MIN_TEMP", 'PRECIP']] = df[["MIN_TEMP", "PRECIP"]].astype(float)
+    if out_path is not None:
+        df.to_csv(out_path)
+    return df
+
+
+def parse_train_as_dict(in_path, out_path):
     # with open ('test.csv', 'rb') as csvfile :  #test on a small file
     with open(in_path, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=';', quotechar='|')
@@ -57,6 +80,21 @@ def parse_as_dict(in_path, out_path):
             writer.writerow([x, nbCallsperDate[x]])
 
 
+def run(train_or_meteo=None):
+    if train_or_meteo is None or train_or_meteo == 'train':
+        parse_train_as_df(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
+    if train_or_meteo is None or train_or_meteo == 'meteo':
+        df1 = parse_meteo_as_df(CONFIG.raw_meteo_path1)
+        df2 = parse_meteo_as_df(CONFIG.raw_meteo_path2)
+        pd.concat([df1, df2]).to_csv(CONFIG.preprocessed_meteo_path)
+
+
 if __name__ == "__main__":
-    # parse_as_dict(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
-    parse_as_df(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
+    pass
+    # parse_train_as_dict(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
+    # parse_train_as_df(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
+    # df1 = parse_meteo_as_df(CONFIG.raw_meteo_path1)
+    # df2 = parse_meteo_as_df(CONFIG.raw_meteo_path2)
+    # df = pd.concat([df1, df2])
+    # print(df)
+    # df.to_csv(CONFIG.preprocessed_meteo_path)

@@ -13,6 +13,7 @@ class _Config:
 
         self.preprocessed_data_path = os.path.join(self.root_path, "data")
         self.preprocessed_train_path = os.path.join(self.preprocessed_data_path, "train.csv")
+        self.preprocessed_meteo_path = os.path.join(self.preprocessed_data_path, "meteo.csv")
 
         self.results_path = os.path.join(self.root_path, "results")
         self.submission_path = os.path.join(self.results_path, "empty_submission.txt")
