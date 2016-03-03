@@ -14,7 +14,7 @@ def parse_train_as_df(in_path, out_path, useful_cols=None, remove_days_off=True)
     """
     # date_format='%Y-%m-%d %H:%M:%S.%f'
     if useful_cols is None:
-        useful_cols = ["DATE", "DAY_OFF", "SPLIT_COD", "ACD_COD", "ASS_ASSIGNMENT", "CSPL_RECEIVED_CALLS"]
+        useful_cols = ["DATE", "DAY_OFF", "ASS_ASSIGNMENT", "CSPL_RECEIVED_CALLS"]
     df = pd.read_csv(in_path,
                      sep=";",
                      usecols=useful_cols,
@@ -22,6 +22,7 @@ def parse_train_as_df(in_path, out_path, useful_cols=None, remove_days_off=True)
     df = df[df["ASS_ASSIGNMENT"].isin(CONFIG.submission_assignments)]
     useful_cols.remove('CSPL_RECEIVED_CALLS')
     if remove_days_off:
+        df = df[df["DATE"].apply(lambda x: x.isoweekday() < 6)]
         df = df[df["DAY_OFF"] == 0]
         df.drop('DAY_OFF', axis=1, inplace=True)
         useful_cols.remove('DAY_OFF')
@@ -80,21 +81,21 @@ def parse_train_as_dict(in_path, out_path):
             writer.writerow([x, nbCallsperDate[x]])
 
 
-def run(train_or_meteo=None):
+def run(train_or_meteo=None, train_cols=None, meteo_cols=None):
     if train_or_meteo is None or train_or_meteo == 'train':
-        parse_train_as_df(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
+        parse_train_as_df(CONFIG.raw_train_path, CONFIG.preprocessed_train_path, useful_cols=train_cols)
     if train_or_meteo is None or train_or_meteo == 'meteo':
-        df1 = parse_meteo_as_df(CONFIG.raw_meteo_path1)
-        df2 = parse_meteo_as_df(CONFIG.raw_meteo_path2)
+        df1 = parse_meteo_as_df(CONFIG.raw_meteo_path1, useful_cols=meteo_cols)
+        df2 = parse_meteo_as_df(CONFIG.raw_meteo_path2, useful_cols=meteo_cols)
         pd.concat([df1, df2]).to_csv(CONFIG.preprocessed_meteo_path)
 
 
 if __name__ == "__main__":
-    pass
     # parse_train_as_dict(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
-    # parse_train_as_df(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
+    parse_train_as_df(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
     # df1 = parse_meteo_as_df(CONFIG.raw_meteo_path1)
     # df2 = parse_meteo_as_df(CONFIG.raw_meteo_path2)
     # df = pd.concat([df1, df2])
     # print(df)
     # df.to_csv(CONFIG.preprocessed_meteo_path)
+    pass

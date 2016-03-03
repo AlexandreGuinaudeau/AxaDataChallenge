@@ -1,7 +1,10 @@
 import inspect
 from functools import partial
 import time
+from datetime import date
 import pandas as pd
+from scipy.sparse import spmatrix, csr_matrix
+import numpy as np
 
 
 def get_features(obj):
@@ -65,6 +68,22 @@ class FeatureFactory:
         for i, c in enumerate(self.X.columns):
             self.X[c].apply(lambda x: x*weights[i])
 
+    def get_sparse_matrix(self, col):
+        column = self[col]
+        if col in ['WEEK_DAY', 'WEEK_DAY_NAME']:
+            col_names = ['Friday', 'Monday', 'Thursday', 'Tuesday', 'Wednesday']
+        elif col == 'TIME':
+            col_names = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0,
+                         9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0, 13.5, 14.0, 14.5, 15.0, 15.5, 16.0, 16.5, 17.0,
+                         17.5, 18.0, 18.5, 19.0, 19.5, 20.0, 20.5, 21.0, 21.5, 22.0, 22.5, 23.0, 23.5]
+        else:
+            col_names = sorted(set(column))
+        columns = []
+        for c in col_names:
+            columns.append(column == c)
+        df = pd.DataFrame(columns).transpose()
+        return csr_matrix(df, dtype=np.bool_)
+
     @column_method('DATE')
     def year(self, x):
         return x.year
@@ -78,6 +97,10 @@ class FeatureFactory:
         return x.day
 
     @column_method('DATE')
+    def cum_days(self, x):
+        return int((x.date() - date(x.year, 1, 1)).days/10)
+
+    @column_method('DATE')
     def full_date(self, x):
         return x.date()
 
@@ -88,6 +111,10 @@ class FeatureFactory:
     @column_method('DATE')
     def week_day(self, x):
         return x.isocalendar()[2]
+
+    @column_method('DATE')
+    def week_day_name(self, x):
+        return x.date().strftime("%A")
 
     @column_method('DATE')
     def week_number(self, x):
@@ -112,9 +139,11 @@ if __name__ == "__main__":
     df = load_train_df(CONFIG.preprocessed_train_path)
     print("Dataframe loaded in %i seconds" % (time.time() - start))
     ff = FeatureFactory(df)
-    for feature in {'YEAR', 'WEEK_NUMBER', 'WEEK_DAY', 'DAY', 'MONTH', 'TIME', 'FULL_DATE'}:
-        # Features are created in roughly 8 seconds.
-        ff(feature)
-    ff.select_features(["ASS_ASSIGNMENT", "DATE", "YEAR", "MONTH", "DAY", "WEEK_NUMBER", "WEEK_DAY", "DAY_OFF", "TIME",
-                        'FULL_DATE'])
+    # for feature in {'YEAR', 'WEEK_NUMBER', 'WEEK_DAY', 'DAY', 'MONTH', 'TIME', 'FULL_DATE'}:
+    #     # Features are created in roughly 8 seconds.
+    #     ff(feature)
+    # ff.select_features(["ASS_ASSIGNMENT", "DATE", "YEAR", "MONTH", "DAY", "WEEK_NUMBER", "WEEK_DAY", "DAY_OFF", "TIME",
+    #                     'FULL_DATE'])
+    spmat = ff.get_sparse_matrix("WEEK_DAY_NAME")
     print(ff.features)
+    print(pd.DataFrame(spmat.todense()).tail())

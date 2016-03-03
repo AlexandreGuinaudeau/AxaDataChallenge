@@ -23,7 +23,8 @@ if __name__ == "__main__":
     _weights = [1, 1, 1, 0.1]
 
     # Test the model
-    learning.cross_val_score(_estimator, _cols, _k_fold, _weights, _scoring, _n_jobs, _verbose, _fit_params, chunksize=100000)
+    print(learning.cross_val_score(_estimator, _cols, _k_fold, _weights, _scoring, _n_jobs, _verbose, _fit_params,
+                                   chunksize=100000))
 
     # Create the corresponding submission file
     learning.create_submission_file(_estimator, _cols, weights=_weights)
