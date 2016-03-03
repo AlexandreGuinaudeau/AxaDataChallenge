@@ -72,3 +72,7 @@ docs/_build/
 # PyBuilder
 target/
 
+# Symbolic links.
+data
+documents
+raw_data
