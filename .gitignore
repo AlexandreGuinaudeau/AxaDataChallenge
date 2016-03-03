@@ -5,6 +5,8 @@
 *.xlsx
 # Visualisation results
 *.jpg
+#Axa pdf
+*.pdf
 
 # PyCharm
 .idea
