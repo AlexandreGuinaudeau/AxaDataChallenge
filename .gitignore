@@ -70,3 +70,4 @@ target/
 # Symbolic links.
 data
 documents
+raw_data
