@@ -216,6 +216,8 @@ def run(train_or_meteo=None, train_cols=None, meteo_cols=None, verbose=0):
     else:
         logger.setLevel(logging.INFO)
 
+
+def run(train_or_meteo=None, train_cols=None, meteo_cols=None, verbose=0):
     if train_or_meteo is None or train_or_meteo == 'train':
         parse_train_as_df(CONFIG.raw_train_path, CONFIG.preprocessed_train_path, useful_cols=train_cols,
                           verbose=verbose)
@@ -238,11 +240,9 @@ def run(train_or_meteo=None, train_cols=None, meteo_cols=None, verbose=0):
         print('Meteo1...')
         preprocess_meteo1(df)
 
-
         # Average amount of rain and average lowest temperatures in each department.
         print('Meteo2...')
         preprocess_meteo2(df)
-
 
         # Booleans for each department where it has rained and where it has frozen
         print('Meteo3...')
@@ -254,22 +254,23 @@ def run(train_or_meteo=None, train_cols=None, meteo_cols=None, verbose=0):
 
         return df
 
-
-
-        logger.debug('Meteo dataframes concatenated.')
-        logger.debug('Summing departments...')
-        df = df.groupby('DATE').agg({'MIN_TEMP': lambda x: pd.Series([(x <= 2).sum()]),
-                                       'PRECIP': lambda x: pd.Series([(x > 1).sum()])})
-        df = df.rename(columns={'MIN_TEMP': 'NUMB_FROZEN_DEPT'})
-        df = df.rename(columns={'PRECIP': 'NUMB_WET_DEPT'})
-        df[["NUMB_FROZEN_DEPT", 'NUMB_WET_DEPT']] = df[["NUMB_FROZEN_DEPT", "NUMB_WET_DEPT"]].astype(int)
-        df.to_csv(CONFIG.preprocessed_meteo_path)
-        logger.info('Saved meteo in csv file.')
+        # logger.debug('Meteo dataframes concatenated.')
+        # logger.debug('Summing departments...')
+        # df = df.groupby('DATE').agg({'MIN_TEMP': lambda x: pd.Series([(x <= 2).sum()]),
+        #                                'PRECIP': lambda x: pd.Series([(x > 1).sum()])})
+        # df = df.rename(columns={'MIN_TEMP': 'NUMB_FROZEN_DEPT'})
+        # df = df.rename(columns={'PRECIP': 'NUMB_WET_DEPT'})
+        # df[["NUMB_FROZEN_DEPT", 'NUMB_WET_DEPT']] = df[["NUMB_FROZEN_DEPT", "NUMB_WET_DEPT"]].astype(int)
+        # df.to_csv(CONFIG.preprocessed_meteo_path)
+        # logger.info('Saved meteo in csv file.')
 
 
 if __name__ == "__main__":
     # parse_train_as_dict(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
     # parse_train_as_df(CONFIG.raw_train_path, CONFIG.preprocessed_train_path)
+    # df1 = parse_meteo_as_df(CONFIG.raw_meteo_path1)
+    # df2 = parse_meteo_as_df(CONFIG.raw_meteo_path2)
+    # df = pd.concat([df1, df2])
     # print(df)
     # run('train', verbose=1)
     from utils import load_submission
