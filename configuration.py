@@ -13,10 +13,15 @@ class _Config:
 
         self.preprocessed_data_path = os.path.join(self.root_path, "data")
         self.preprocessed_train_path = os.path.join(self.preprocessed_data_path, "train.csv")
+        self.preprocessed_train_path_zeros = os.path.join(self.preprocessed_data_path, "train_zeros.csv")
+        self.preprocessed_train_path_means = os.path.join(self.preprocessed_data_path, "train_means.csv")
         self.preprocessed_meteo_path = os.path.join(self.preprocessed_data_path, "meteo.csv")
+        self.preprocessed_meteo_path_complete = os.path.join(self.preprocessed_data_path, "meteo_complete.csv")
+        self.means_path = os.path.join(self.preprocessed_data_path, "means.csv")
 
         self.results_path = os.path.join(self.root_path, "results")
         self.submission_path = os.path.join(self.results_path, "empty_submission.txt")
+        self.submission_path_mean = os.path.join(self.results_path, "mean_submission.txt")
 
         self.submission_assignments = ['CAT', 'CMS', 'Crises', 'Domicile', 'Gestion', 'Gestion - Accueil Telephonique',
                                        'Gestion Amex', 'Gestion Assurances', 'Gestion Clients', 'Gestion DZ',
@@ -30,3 +35,10 @@ class _Config:
 
 
 CONFIG = _Config()
+
+# ['CAT', 'CMS', 'Crises', 'Domicile', 'Gestion', 'Gestion - Accueil Telephonique',
+#                                        'Gestion Amex', 'Gestion Assurances', 'Gestion Clients', 'Gestion DZ',
+#                                        'Gestion Relation Clienteles', 'Gestion Renault', 'Japon', 'Manager',
+#                                        'Mécanicien', 'Médical', 'Nuit', 'Prestataires', 'RENAULT', 'RTC',
+#                                        'Regulation Medicale', 'SAP', 'Services', 'Tech. Axa', 'Tech. Inter',
+#                                        'Tech. Total', 'Téléphonie']

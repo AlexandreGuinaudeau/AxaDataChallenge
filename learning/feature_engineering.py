@@ -18,17 +18,17 @@ def column_method(name=None):
             x = args[0].X
             if name is None:
                 return x.apply(_lambda, axis='columns')
-            if name not in x.columns:
-                raise KeyError(name)
-            return x[name].apply(_lambda)
+            col = args[0][name]
+            return col.apply(_lambda)
         return wrapped
     return wrapper
 
 
 class FeatureFactory:
-    def __init__(self, x):
+    def __init__(self, x, weather_df=None):
         self.X = x
         self.assignments = {}
+        self.weather_df = weather_df
 
     def __getitem__(self, item):
         item = item.upper()
@@ -45,7 +45,6 @@ class FeatureFactory:
         lower_name = name.lower()
         name = name.upper()
         if name in self.features:
-            print("INFO: %s is already a column of X." % name)
             return self.X[name]
         if lower_name not in get_features(self):
             raise NotImplementedError(lower_name)
@@ -61,17 +60,14 @@ class FeatureFactory:
         return self.X
 
     def apply_weights(self, weights):
-        if weights is None:
-            return
-        if len(weights) != len(self.X.columns):
-            raise AssertionError("The weights must be of the same size as the columns")
-        for i, c in enumerate(self.X.columns):
-            self.X[c].apply(lambda x: x*weights[i])
+        for c in self.X.columns:
+            if c in weights.keys():
+                self.X[c].apply(lambda x: x*weights[c])
 
     def get_sparse_matrix(self, col):
         column = self[col]
         if col in ['WEEK_DAY', 'WEEK_DAY_NAME']:
-            col_names = ['Friday', 'Monday', 'Thursday', 'Tuesday', 'Wednesday']
+            col_names = ['Friday', 'Monday', 'Saturday', 'Sunday', 'Thursday', 'Tuesday', 'Wednesday']
         elif col == 'TIME':
             col_names = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0,
                          9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5, 13.0, 13.5, 14.0, 14.5, 15.0, 15.5, 16.0, 16.5, 17.0,
@@ -80,9 +76,14 @@ class FeatureFactory:
             col_names = sorted(set(column))
         columns = []
         for c in col_names:
-            columns.append(column == c)
+            try:
+                columns.append(column == c)
+            except TypeError as e:
+                print(c)
+                print(column)
+                raise e
         df = pd.DataFrame(columns).transpose()
-        return csr_matrix(df, dtype=np.bool_)
+        return csr_matrix(df, dtype=np.int)
 
     @column_method('DATE')
     def year(self, x):
@@ -116,6 +117,14 @@ class FeatureFactory:
     def week_day_name(self, x):
         return x.date().strftime("%A")
 
+    @column_method('WEEK_DAY')
+    def weekend(self, x):
+        if x <= 5:
+            return 0
+        if x == 6:
+            return 1
+        return 2
+
     @column_method('DATE')
     def week_number(self, x):
         return x.isocalendar()[1]
@@ -126,24 +135,18 @@ class FeatureFactory:
             self.assignments[x] = len(self.assignments)
         return self.assignments[x]
 
+    def numb_frozen_dept(self):
+        if 'FULL_DATE' not in self.features:
+            self('FULL_DATE')
+        self.X['FULL_DATE'] = pd.to_datetime(self['FULL_DATE'])
+        df = pd.merge(self.X, self.weather_df, how='left', left_on='FULL_DATE', right_on='DATE')
+        return df['NUMB_FROZEN_DEPT']
+
+    def numb_wet_dept(self):
+        if 'FULL_DATE' not in self.features:
+            self('FULL_DATE')
+        return pd.merge(self.X, self.weather_df, how='left', left_on='FULL_DATE', right_on='DATE')['NUMB_WET_DEPT']
+
     @column_method()  # Functions are 9 times more efficient when applied directly on the column X['DATE']
     def slow_example(self, x):
         return x['DATE'].hour + float(x['DATE'].minute)/60
-
-
-if __name__ == "__main__":
-    from configuration import CONFIG
-    from utils import load_train_df
-
-    start = time.time()
-    df = load_train_df(CONFIG.preprocessed_train_path)
-    print("Dataframe loaded in %i seconds" % (time.time() - start))
-    ff = FeatureFactory(df)
-    # for feature in {'YEAR', 'WEEK_NUMBER', 'WEEK_DAY', 'DAY', 'MONTH', 'TIME', 'FULL_DATE'}:
-    #     # Features are created in roughly 8 seconds.
-    #     ff(feature)
-    # ff.select_features(["ASS_ASSIGNMENT", "DATE", "YEAR", "MONTH", "DAY", "WEEK_NUMBER", "WEEK_DAY", "DAY_OFF", "TIME",
-    #                     'FULL_DATE'])
-    spmat = ff.get_sparse_matrix("WEEK_DAY_NAME")
-    print(ff.features)
-    print(pd.DataFrame(spmat.todense()).tail())

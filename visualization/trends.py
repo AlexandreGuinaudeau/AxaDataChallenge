@@ -4,27 +4,28 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from configuration import CONFIG
-from utils import load_train_df
+from utils import load_train_df, load_weather_df
 from learning.feature_engineering import FeatureFactory
 
 
-def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
+def compare_calls(scale, out_path, assignments=None, datetime=None):
     """
     Plot the number of calls to compare them.
 
     Parameters
     ==========
-    scale: 'DAY', 'WEEK' or 'YEAR', calls are averaged on all smaller scales, and plotted for larger scales.
+    scale: 'DATETIME', 'DAY', 'WEEK' or 'YEAR', calls are averaged on all smaller scales,
+        and plotted for larger scales.
     out_path: str, folder in which figures should be saved.
     assignments: str or list of str, assignments to take into account.
         None to take all columns into account.
-    remove_days_off: whether days off should be removed
+    datetime: if 'DATETIME', the datetime to filter on
 
     Example
     =======
     Week comparison: For each day of the week, take the average number of calls, then compare for each week of the year.
     """
-    assert scale in ['DAY', 'WEEK', 'YEAR']
+    assert scale in ['DATETIME', 'DAY', 'WEEK', 'YEAR']
     if assignments is not None:
         if isinstance(assignments, str):
             assignments = [assignments]
@@ -41,6 +42,21 @@ def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
     for column in ["WEEK_NUMBER", "WEEK_DAY", "TIME"]:
         ff(column)
     df = ff.X
+
+    if scale == 'DATETIME':
+        assert datetime is not None
+        df = df[ff("WEEK_DAY") == datetime.isoweekday()]
+        df = df[df['TIME'] == datetime.hour + float(datetime.minute)/60]
+        for assignment in assignments:
+            print(assignment)
+            df_assignment = df[df['ASS_ASSIGNMENT'] == assignment].reset_index()
+            plt.plot(df_assignment['CSPL_RECEIVED_CALLS'])
+        weather_df = load_weather_df(CONFIG.preprocessed_meteo_path)
+        good_days = [d for d in weather_df.index if d.isoweekday() == datetime.isoweekday()]
+        weather_df = weather_df.loc[good_days, :].reset_index()
+        plt.plot(weather_df['NUMB_FROZEN_DEPT'])
+        plt.plot(weather_df['NUMB_WET_DEPT'])
+        plt.savefig(os.path.join(out_path, scale+".jpg"))
 
     if scale == 'DAY':
         grouped = df.groupby(["ASS_ASSIGNMENT", "WEEK_NUMBER", "WEEK_DAY", "TIME"])
@@ -77,7 +93,21 @@ def compare_calls(scale, out_path, assignments=None, remove_days_off=True):
         plt.clf()
 
 
+def get_holidays():
+    df = load_train_df(CONFIG.preprocessed_train_path)
+    # weather_df = load_weather_df(CONFIG.preprocessed_meteo_path)
+    ff = FeatureFactory(df, weather_df=None)
+    ff('WEEK_NUMBER')
+    # ff('NUMB_FROZEN_DEPT')
+    # ff('NUMB_WET_DEPT')
+    df = ff.X
+    for assignment in CONFIG.submission_assignments:
+        plt.plot(df[df["ASS_ASSIGNMENT"] == assignment].groupby('WEEK_NUMBER')['CSPL_RECEIVED_CALLS'].mean().reset_index())
+        plt.savefig(os.path.join(visualization_path, "holidays_absolute_values.jpg"))
+
+
 if __name__ == "__main__":
+    import datetime as dt
     # import time
     # start = time.time()
     # df = pd.read_csv(CONFIG.raw_train_path, sep=";",
@@ -88,4 +118,7 @@ if __name__ == "__main__":
     # df.to_csv(CONFIG.preprocessed_train_path)
     # print("Dataframe parsed in %i s" % (time.time() - start))
     visualization_path = os.path.join(os.getcwd(), 'visualization')
-    compare_calls("DAY", visualization_path, assignments='CAT')
+    # compare_calls("DATETIME", visualization_path,
+    #               assignments=['CAT', 'Tech. Axa', 'Tech. Inter', 'Tech. Total', 'Téléphonie'],
+    #               datetime=dt.datetime(2011, 1, 3, 16))
+    get_holidays()
