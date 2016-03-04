@@ -1,6 +1,7 @@
 \documentclass[english]{article}
 \usepackage[T1]{fontenc}
 \usepackage[latin9]{inputenc}
+\usepackage{graphicx}
 \usepackage{babel}
 \begin{document}
 
@@ -21,9 +22,9 @@ and a number of parameters such as the area of expertise of the call
 and the state of the call center. It comes up with another complementary
 set of data concerning weather information in France, which is supposed
 to have an influence over the number of accidents and thus incoming
-calls to AXA. We divided our work in -- parts. First, the dataset
-has to be preprocessed to be used efficiently. Then we use this data
-to create features for our model. After this feature engineering step
+calls to AXA. We divided our work in 4 parts. First, the dataset has
+to be preprocessed to be used efficiently. Then we use this data to
+create features for our model. After this feature engineering step
 we train a model and use it to predict the number of calls asked in
 the submission file. We also evaluate our model using cross-validation
 techniques.
@@ -51,10 +52,61 @@ by summing the number of calls having the same date and assignment
 values. 
 
 The meteo dataset consists in rows giving information at a given date
-for a some location - city and department ($\simeq$region) number
+for a some location - city and departement ($\simeq$region) number
 - in France. From this, we extracted the number of french departements
-undergoing negative temperaures and number of them with rain.
+undergoing negative temperaures and number of them with rain, the
+mean of tje lowest temperature over all departements.
 
 
 \section{Feature engineering}
+
+The data is then gathered in a matrix. The preprocessed csv files
+are loaded into a pandas dataframe. We optimized the creation of features
+by creating a class FeatureFactory with a general wrapper function
+that works on a column of the feature matrix. To avoid bugs linked
+with missing values in the preprocessed dataset, we added zeros to
+the original training set, assuming there is no call when no data
+is registered. The meteo missing values are also replaced with the
+mean of the data.
+
+\begin{figure}
+\begin{centering}
+\includegraphics[scale=0.5]{\string"C:/Users/HP/Desktop/AXA challenge/plot\string".jpg}
+\par\end{centering}
+
+\caption{Number of calls depending on the hour of the day.}
+
+
+\end{figure}
+
+
+To first have an idea of the features we selected, we plotted the
+variation of the number of calls depending on what we expected to
+have an influence. The features that we create are mostly dealing
+with the date, ie. hour, day in the week, weekend or not, month, year.
+Indeed, time appears to have essential of the influence over the number
+of calls. The assignment is also a feature. Finally we added a few
+meteo features, those we choose to extract at the preprocessng step.
+
+
+\section{Training models}
+
+We used the sklearn library to train a model over the features we
+extracted. Our approach was the following : we try one of the regression
+models among those provided in the library. From this we compute a
+cross validation score one one full day. We repeat this until we find
+out whiwh is the best model to be used. 
+
+The best results we got with this aproach are a score of 113 with
+the submission file. We then realised that this score drops to 75
+by simply uploading a mean of all number of call values on the same
+day of the week/hour/assignment and not using the regression algorithms.
+Thus, our final algorithm connsists in : 
+\begin{itemize}
+\item Computing the means
+\item Substract them from the data and train a model using this dataset
+without means
+\item Finally, add the predictions from the model to the means computed
+first\end{itemize}
+
 \end{document}
