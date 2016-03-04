@@ -60,14 +60,11 @@ def parse_meteo_as_df(in_path, out_path=None, useful_cols=None):
     """
     Parsing meteo file
     """
-    # date_format='%Y-%m-%d %H:%M'
     # print('Reading meteo...')
     if useful_cols is None:
         useful_cols = ['DATE', 'DEPT', 'MIN_TEMP', 'PRECIP']  # date, temperature_min, precipitations
-    # if useful_cols is None:
-    #     useful_cols = [0, 1, 3, 6]  # date, temperature_min, precipitations
     header_row = ['DATE', 'DEPT', 'CITY', 'MIN_TEMP', 'MAX_TEMP', 'WIND_DIR', 'PRECIP', 'HPA']
-    # because the meteo file index is missing  :(
+
     df = pd.read_csv(in_path,
                      sep=",",
                      usecols=useful_cols,
@@ -84,14 +81,53 @@ def parse_meteo_as_df(in_path, out_path=None, useful_cols=None):
     df=df[df['DEPT']!='00']
     # print('Done.')
 
+    # print('Formating dates.')
+    df['DATE']=df.DATE.map(lambda x: x.date())
+    # print('Dates formated.')
 
-    # grouped = df.groupby('DATE')  # group by date
-    # df = grouped["MIN_TEMP", 'PRECIP'].mean().reset_index()
-    # df[["MIN_TEMP", 'PRECIP']] = df[["MIN_TEMP", "PRECIP"]].astype(float)
     if out_path is not None:
         df.to_csv(out_path)
     return df
 
+# Number of departments where it has rained and where it has frozen
+def preprocess_meteo1(df):
+    grouped=df.groupby(['DATE','DEPT'])
+    df1=grouped.agg({'MIN_TEMP':np.min,'PRECIP':np.max}).reset_index()
+    df2=df1.groupby('DATE').agg({'MIN_TEMP':lambda x: pd.Series([(x <= 0).sum()]),'PRECIP':lambda x: pd.Series([(x > 0).sum()])})
+    df2=df2.rename(columns = {'MIN_TEMP':'NUMB_FROZEN_DEPT'})
+    df2=df2.rename(columns = {'PRECIP':'NUMB_WET_DEPT'})
+    df2.to_csv(CONFIG.preprocessed_meteo1_path)
+    print('meteo1 head:')
+    print(df2.head())
+
+# Average amount of rain and average lowest temperatures in each department.
+def preprocess_meteo2(df):
+    grouped=df.groupby(['DATE','DEPT'])
+    df1=grouped.agg({'MIN_TEMP':np.mean,'PRECIP':np.mean}).reset_index()
+    df1.to_csv(CONFIG.preprocessed_meteo2_path)
+    print('meteo2 head:')
+    print(df1.head())
+
+
+# Booleans for each department where it has rained and where it has frozen
+def preprocess_meteo3(df):
+    grouped=df.groupby(['DATE','DEPT'])
+    df1=grouped.agg({'MIN_TEMP':np.mean,'PRECIP':np.mean}).reset_index()
+    df1['PRECIP']=df1['PRECIP'].apply(lambda x: x>0)
+    df1['MIN_TEMP']=df1['MIN_TEMP'].apply(lambda x: x<0)
+    df1.to_csv(CONFIG.preprocessed_meteo3_path)
+    print('meteo3 head:')
+    print(df1.head())
+
+# Booleans for each department where average amount of rain is above 1mm and where it has frozen.
+def preprocess_meteo4(df):
+    grouped=df.groupby(['DATE','DEPT'])
+    df1=grouped.agg({'MIN_TEMP':np.mean,'PRECIP':np.mean}).reset_index()
+    df1['PRECIP']=df1['PRECIP'].apply(lambda x: x>0)
+    df1['MIN_TEMP']=df1['MIN_TEMP'].apply(lambda x: x<0)
+    df1.to_csv(CONFIG.preprocessed_meteo4_path)
+    print('meteo4 head:')
+    print(df1.head())
 
 def parse_train_as_dict(in_path, out_path):
     # with open ('test.csv', 'rb') as csvfile :  #test on a small file
@@ -127,17 +163,31 @@ def run(train_or_meteo=None, train_cols=None, meteo_cols=None):
         df1 = parse_meteo_as_df(CONFIG.raw_meteo_path1)
         print('Reading meteo file 2...')
         df2 = parse_meteo_as_df(CONFIG.raw_meteo_path2)
+        print('Concatenating meteo files...')
         df = pd.concat([df1, df2])
-        print('Meteo dataframes concatenated.')
-        df['DATE']=df.DATE.map(lambda x: x.date())
-        print('Dates formated.')
-        grouped=df.groupby(['DATE','DEPT'])
-        df1=grouped.agg({'MIN_TEMP':np.min,'PRECIP':np.max}).reset_index()
-        df2=df1.groupby('DATE').agg({'MIN_TEMP':lambda x: pd.Series([(x <= 0).sum()]),'PRECIP':lambda x: pd.Series([(x > 0).sum()])})
-        df2=df2.rename(columns = {'MIN_TEMP':'NUMB_FROZEN_DEPT'})
-        df2=df2.rename(columns = {'PRECIP':'NUMB_WET_DEPT'})
-        df2.to_csv(CONFIG.preprocessed_meteo_path)
-        print('Done.')
+        print('Meteo files concatenated. Running preprocessing...')
+
+        # Number of departments where it has rained and where it has frozen
+        print('Meteo1...')
+        preprocess_meteo1(df)
+
+
+        # Average amount of rain and average lowest temperatures in each department.
+        print('Meteo2...')
+        preprocess_meteo2(df)
+
+
+        # Booleans for each department where it has rained and where it has frozen
+        print('Meteo3...')
+        preprocess_meteo3(df)
+
+        # Booleans for each department where average amount of rain is above 1mm and where it has frozen.
+        print('Meteo4...')
+        preprocess_meteo4(df)
+
+        return df
+
+
 
 
 
