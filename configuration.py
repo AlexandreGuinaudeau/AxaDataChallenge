@@ -15,6 +15,7 @@ class _Config:
         self.preprocessed_train_path = os.path.join(self.preprocessed_data_path, "train.csv")
         self.preprocessed_train_path_zeros = os.path.join(self.preprocessed_data_path, "train_zeros.csv")
         self.preprocessed_train_path_means = os.path.join(self.preprocessed_data_path, "train_means.csv")
+        self.preprocessed_meteo_path_complete = os.path.join(self.preprocessed_data_path, "meteo_complete.csv")
         self.preprocessed_meteo_path = os.path.join(self.preprocessed_data_path, "meteo.csv")
         self.preprocessed_meteo1_path = os.path.join(self.preprocessed_data_path, "meteo1.csv")
         self.preprocessed_meteo2_path = os.path.join(self.preprocessed_data_path, "meteo2.csv")

@@ -145,6 +145,7 @@ def cross_val_score(estimator, cols, k_fold, weights=None, scoring=None, n_jobs=
         logger.setLevel(logging.INFO)
 
     df, weather_df = get_df(cols, load_from_temp, temp_path)
+    cum_score = 0
     for assignment in CONFIG.submission_assignments:
         ass_df = df[df['ASS_ASSIGNMENT'] == assignment]
         # print(df['CSPL_RECEIVED_CALLS'].std())
@@ -157,12 +158,14 @@ def cross_val_score(estimator, cols, k_fold, weights=None, scoring=None, n_jobs=
                                                  n_jobs=n_jobs, verbose=verbose, fit_params=fit_params)
 
         logger.info("Average score for %s: %s" % (assignment, str(np.mean(score))))
+        cum_score += np.mean(score)
+    print(cum_score/len(CONFIG.submission_assignments))
 
 
 if __name__ == "__main__":
-    from sklearn.neighbors import KNeighborsRegressor, RadiusNeighborsRegressor, NearestCentroid
+    from sklearn.neighbors import KNeighborsRegressor, RadiusNeighborsRegressor
     from sklearn.linear_model import TheilSenRegressor, LogisticRegression, RandomizedLogisticRegression, \
-        ElasticNet, Ridge, SGDRegressor, ARDRegression, Perceptron, PassiveAggressiveRegressor, BayesianRidge, \
+        ElasticNet, Ridge, SGDRegressor, ARDRegression, PassiveAggressiveRegressor, BayesianRidge, \
         OrthogonalMatchingPursuit, RANSACRegressor
     from sklearn.tree import DecisionTreeRegressor, ExtraTreeRegressor
     from sklearn.svm import SVR, LinearSVR
@@ -179,17 +182,18 @@ if __name__ == "__main__":
 
     # _df = load_train_df(CONFIG.preprocessed_train_path)
     _submission_df = load_submission()
-    # _estimator = KNeighborsRegressor(n_neighbors=10, weights='distance')
+    # _estimator = KNeighborsRegressor(n_neighbors=3)
     # _estimator = ARDRegression()
     _estimator = BayesianRidge()
     # _estimator = OrthogonalMatchingPursuit()
+    # _estimator = ExtraTreeRegressor()
 
     _scoring = 'mean_squared_error'
     _k_fold = 3
     _n_jobs = 3
     _verbose = 0
     _fit_params = None
-    _cols = ["NUMB_FROZEN_DEPT", "NUMB_FROZEN_DEPT"]
+    _cols = ["CUM_DAYS"]
     _weights = None
     _temp_path = os.path.join(os.getcwd(), 'train.csv')
 

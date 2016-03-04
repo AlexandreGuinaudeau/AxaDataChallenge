@@ -2,14 +2,16 @@ from sklearn.utils.validation import NotFittedError
 from sklearn.linear_model.base import LinearModel, RegressorMixin, LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import ARDRegression, BayesianRidge
+from sklearn.tree import DecisionTreeRegressor
 import numpy as np
 
 
 class StackedRegression(LinearModel, RegressorMixin):
     def __init__(self, weights=None, cv_train_size=None):
         estimators = []
-        estimators.append(KNeighborsRegressor(n_neighbors=10, weights='distance'))
-        estimators.append(ARDRegression())
+        estimators.append(KNeighborsRegressor(n_neighbors=3))
+        estimators.append(DecisionTreeRegressor())
+        estimators.append(BayesianRidge())
         # estimators.append(BayesianRidge())
         self.estimators = estimators
         self.stacker = LinearRegression()
@@ -35,7 +37,6 @@ class StackedRegression(LinearModel, RegressorMixin):
             raise NotFittedError('StackedRegression must call fit_stack before fit.')
         for estimator in self.estimators:
             estimator.fit(X, y)
-        self._is_fitted = True
 
     def predict(self, X):
         predictions = np.concatenate([np.matrix(estimator.predict(X)).transpose()
